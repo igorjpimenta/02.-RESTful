@@ -1,25 +1,38 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from stocks.serializers import SplitsSerializer
+from stocks.serializers import WrapperSerializer
 import yfinance as yf
+from typing import Dict
+from datetime import datetime
 
 
 class SplitsList(APIView):
     def post(self, request, *args, **kwargs):
         data = request.data
-        serializer = SplitsSerializer(data=data)
+        serializer = WrapperSerializer(data=data, require_dates=False)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         else:
             payload = serializer.validated_data
-            ticker = yf.Ticker(payload.get('ticker'))
-            splits = ticker.splits
+            response_data: Dict[str, dict] = {}
 
-            splits_response = {}
-            for date, value in splits.items():
-                date = date.strftime('%Y-%m-%d')
-                splits_response[date] = value
+            for item in payload:
+                ticker = item.get('ticker')
+                ticker_info = yf.Ticker(ticker)
+                splits = ticker_info.splits
 
-            return Response(splits_response, status=status.HTTP_200_OK)
+                splits_data: Dict[str, float] = {}
+                for date, value in splits.items():
+                    if isinstance(date, datetime):
+                        date = date.strftime('%Y-%m-%d')
+
+                    splits_data[str(date)] = value
+
+                response_data[ticker.rstrip('.SA')] = splits_data
+
+            if isinstance(data, dict):
+                response_data = list(response_data.values())[0]
+
+            return Response(response_data, status=status.HTTP_200_OK)
