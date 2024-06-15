@@ -8,7 +8,7 @@ from datetime import datetime
 
 
 class DividendsList(APIView):
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         data = request.data
         serializer = WrapperSerializer(data=data, require_dates=False)
         if not serializer.is_valid():
@@ -20,15 +20,19 @@ class DividendsList(APIView):
 
             for item in payload:
                 ticker = item.get('ticker')
+                start_date = item.get('start_date')
+                end_date = item.get('end_date')
+
                 ticker_info = yf.Ticker(ticker)
                 dividends = ticker_info.dividends
 
                 dividends_data: Dict[str, float] = {}
                 for date, value in dividends.items():
-                    if isinstance(date, datetime):
-                        date = date.strftime('%Y-%m-%d')
+                    if (not start_date and not end_date) or (date >= start_date and date <= end_date):
+                        if isinstance(date, datetime):
+                            date = date.strftime('%Y-%m-%d')
 
-                    dividends_data[str(date)] = value
+                        dividends_data[str(date)] = value
 
                 response_data[ticker.rstrip('.SA')] = dividends_data
 

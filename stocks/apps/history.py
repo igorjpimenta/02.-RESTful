@@ -8,7 +8,7 @@ from datetime import datetime
 
 
 class HistoryData(APIView):
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         data = request.data
         serializer = WrapperSerializer(data=data)
         if not serializer.is_valid():

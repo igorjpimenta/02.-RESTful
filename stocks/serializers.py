@@ -27,7 +27,7 @@ class Serializer(serializers.Serializer):
             data['start_date'] = date
             data['end_date'] = date
 
-        if self.require_dates:
+        if data['start_date'] and data['end_date']:
             data['end_date'] += timedelta(days=1)
 
         return data
