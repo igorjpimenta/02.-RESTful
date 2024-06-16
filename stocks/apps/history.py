@@ -21,23 +21,26 @@ class HistoryData(APIView):
             for item in payload:
                 ticker = item.get('ticker')
                 ticker_info = yf.Ticker(ticker)
-                history = ticker_info.history(
-                    start=item.get('start_date'),
-                    end=item.get('end_date')
-                )
+                dates = item.get('dates')
 
                 history_data: Dict[str, dict] = {}
-                for date, row in history.iterrows():
-                    if isinstance(date, datetime):
-                        date = date.strftime('%Y-%m-%d')
+                for date_entry in dates:
+                    history = ticker_info.history(
+                        start=date_entry.get('start_date'),
+                        end=date_entry.get('end_date')
+                    )
 
-                    history_data[str(date)] = {
-                        "o": row['Open'],
-                        "h": row['High'],
-                        "l": row['Low'],
-                        "c": row['Close'],
-                        "v": row['Volume'],
-                    }
+                    for date, row in history.iterrows():
+                        if isinstance(date, datetime):
+                            date = date.strftime('%Y-%m-%d')
+
+                        history_data[str(date)] = {
+                            "o": row['Open'],
+                            "h": row['High'],
+                            "l": row['Low'],
+                            "c": row['Close'],
+                            "v": row['Volume'],
+                        }
 
                 response_data[ticker.rstrip('.SA')] = history_data
 

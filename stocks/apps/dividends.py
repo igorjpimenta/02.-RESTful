@@ -20,19 +20,29 @@ class DividendsList(APIView):
 
             for item in payload:
                 ticker = item.get('ticker')
-                start_date = item.get('start_date')
-                end_date = item.get('end_date')
+                dates = item.get('dates')
 
                 ticker_info = yf.Ticker(ticker)
                 dividends = ticker_info.dividends
 
                 dividends_data: Dict[str, float] = {}
                 for date, value in dividends.items():
-                    if (not start_date and not end_date) or (date >= start_date and date <= end_date):
+                    if not dates:
                         if isinstance(date, datetime):
-                            date = date.strftime('%Y-%m-%d')
+                            date_str = date.strftime('%Y-%m-%d')
 
-                        dividends_data[str(date)] = value
+                        dividends_data[date_str] = value
+
+                    else:
+                        for date_entry in dates:
+                            start_date = date_entry.get('start_date')
+                            end_date = date_entry.get('end_date')
+
+                            if (not start_date and not end_date) or (start_date <= date <= end_date):
+                                if isinstance(date, datetime):
+                                    date_str = date.strftime('%Y-%m-%d')
+
+                                dividends_data[date_str] = value
 
                 response_data[ticker.rstrip('.SA')] = dividends_data
 

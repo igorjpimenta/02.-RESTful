@@ -2,8 +2,15 @@ from rest_framework import serializers
 from datetime import timedelta
 
 
-class Serializer(serializers.Serializer):
+class DateRangeSerializer(serializers.Serializer):
+    date = serializers.DateTimeField(required=False)
+    start_date = serializers.DateTimeField(required=False)
+    end_date = serializers.DateTimeField(required=False)
+
+
+class TickerSerializer(serializers.Serializer):
     ticker = serializers.CharField(max_length=6)
+    dates = DateRangeSerializer(many=True, required=False)
     date = serializers.DateTimeField(required=False)
     start_date = serializers.DateTimeField(required=False)
     end_date = serializers.DateTimeField(required=False)
@@ -13,22 +20,54 @@ class Serializer(serializers.Serializer):
         super().__init__(*args, **kwargs)
 
     def validate(self, data):
-        date = data.get('date')
-        start_date = data.get('start_date')
-        end_date = data.get('end_date')
+        if 'dates' not in data and 'date' not in data and 'start_date' not in data and 'end_date' not in data and self.require_dates:
+            raise serializers.ValidationError("Either dates, or date or both start_date and end_date must be provided.")
 
-        if not date and not start_date and not end_date and self.require_dates:
-            raise serializers.ValidationError("Either date or both start_date and end_date must be provided.")
+        if 'dates' in data:
+            if not data.get('dates'):
+                raise serializers.ValidationError("Dates cannot be empty if provided.")
 
-        elif (start_date and not end_date) or (end_date and not start_date):
-            raise serializers.ValidationError("Both start_date and end_date are required if one is provided.")
+        else:
+            if 'start_date' not in data and 'end_date' not in data:
+                data['dates'] = [{
+                    'date': data.get('date')
+                }]
 
-        if not start_date and not end_date:
-            data['start_date'] = date
-            data['end_date'] = date
+                data.pop('date', None)
 
-        if data['start_date'] and data['end_date']:
-            data['end_date'] += timedelta(days=1)
+            else:
+                data['dates'] = [{
+                    'start_date': data.get('start_date'),
+                    'end_date': data.get('end_date')
+                }]
+
+                data.pop('start_date', None)
+                data.pop('end_date', None)
+
+        validated_dates = []
+
+        for date_entry in data['dates']:
+            date = date_entry.get('date')
+            start_date = date_entry.get('start_date')
+            end_date = date_entry.get('end_date')
+
+            if not date and not start_date and not end_date and self.require_dates:
+                raise serializers.ValidationError("Either date or both start_date and end_date must be provided.")
+
+            if (start_date and not end_date) or (end_date and not start_date):
+                raise serializers.ValidationError("Both start_date and end_date are required if one is provided.")
+
+            if not start_date and not end_date:
+                date_entry['start_date'] = date
+                date_entry['end_date'] = date
+                date_entry.pop('date', None)
+
+            if date_entry['start_date'] and date_entry['end_date']:
+                date_entry['end_date'] += timedelta(days=1)
+
+            validated_dates.append(date_entry)
+
+        data['dates'] = validated_dates
 
         return data
 
@@ -51,14 +90,14 @@ class WrapperSerializer(serializers.Serializer):
         super().__init__(*args, **kwargs)
 
     def to_internal_value(self, data):
-        history_list_serializer = ListSerializer(
+        list_serializer = ListSerializer(
             data=data,
-            child=Serializer(require_dates=self.require_dates)
+            child=TickerSerializer(require_dates=self.require_dates)
         )
 
-        return history_list_serializer.to_internal_value(data)
+        return list_serializer.to_internal_value(data)
 
     def to_representation(self, instance):
-        history_list_serializer = ListSerializer(instance=instance, many=True)  # type: ignore
+        list_serializer = ListSerializer(instance=instance, many=True)  # type: ignore
 
-        return history_list_serializer.data
+        return list_serializer.data

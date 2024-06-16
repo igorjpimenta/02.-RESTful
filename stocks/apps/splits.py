@@ -11,6 +11,7 @@ class SplitsList(APIView):
     def post(self, request):
         data = request.data
         serializer = WrapperSerializer(data=data, require_dates=False)
+
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -20,19 +21,29 @@ class SplitsList(APIView):
 
             for item in payload:
                 ticker = item.get('ticker')
-                start_date = item.get('start_date')
-                end_date = item.get('end_date')
+                dates = item.get('dates')
 
                 ticker_info = yf.Ticker(ticker)
                 splits = ticker_info.splits
 
                 splits_data: Dict[str, float] = {}
                 for date, value in splits.items():
-                    if (not start_date and not end_date) or (date >= start_date and date <= end_date):
+                    if not dates:
                         if isinstance(date, datetime):
-                            date = date.strftime('%Y-%m-%d')
+                            date_str = date.strftime('%Y-%m-%d')
 
-                        splits_data[str(date)] = value
+                        splits_data[date_str] = value
+
+                    else:
+                        for date_entry in dates:
+                            start_date = date_entry.get('start_date')
+                            end_date = date_entry.get('end_date')
+
+                            if (not start_date and not end_date) or (start_date <= date <= end_date):
+                                if isinstance(date, datetime):
+                                    date_str = date.strftime('%Y-%m-%d')
+
+                                splits_data[date_str] = value
 
                 response_data[ticker.rstrip('.SA')] = splits_data
 
