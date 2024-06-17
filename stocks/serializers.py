@@ -1,33 +1,43 @@
-from rest_framework import serializers
+from rest_framework.serializers import Serializer, CharField, DateTimeField, ValidationError
 from datetime import timedelta
 
 
-class DateRangeSerializer(serializers.Serializer):
-    date = serializers.DateTimeField(required=False)
-    start_date = serializers.DateTimeField(required=False)
-    end_date = serializers.DateTimeField(required=False)
+class DateRangeSerializer(Serializer):
+    date = DateTimeField(required=False)
+    start_date = DateTimeField(required=False)
+    end_date = DateTimeField(required=False)
 
 
-class TickerSerializer(serializers.Serializer):
-    ticker = serializers.CharField(max_length=6)
+class TickerSerializer(Serializer):
+    ticker = CharField(max_length=6)
     dates = DateRangeSerializer(many=True, required=False)
-    date = serializers.DateTimeField(required=False)
-    start_date = serializers.DateTimeField(required=False)
-    end_date = serializers.DateTimeField(required=False)
+    date = DateTimeField(required=False)
+    start_date = DateTimeField(required=False)
+    end_date = DateTimeField(required=False)
 
     def __init__(self, *args, **kwargs):
         self.require_dates = kwargs.pop('require_dates', True)
         super().__init__(*args, **kwargs)
 
+    def validate_ticker(self, value):
+        return f"{value}.SA"
+
     def validate(self, data):
-        if 'dates' not in data and 'date' not in data and 'start_date' not in data and 'end_date' not in data and self.require_dates:
-            raise serializers.ValidationError("Either dates, or date or both start_date and end_date must be provided.")
+        missing_fields = (
+            'dates' not in data and
+            'date' not in data and
+            'start_date' not in data and
+            'end_date' not in data
+        )
+
+        if missing_fields and self.require_dates:
+            raise ValidationError("Either 'dates', or 'date' or both 'start_date' and 'end_date' must be provided.")
 
         if 'dates' in data:
-            if not data.get('dates'):
-                raise serializers.ValidationError("Dates cannot be empty if provided.")
+            if not data.get('dates') and self.require_dates:
+                raise ValidationError("'dates' must be an array containing 'date' or both 'start_date' and 'end_date'.")
 
-        else:
+        elif not missing_fields:
             if 'start_date' not in data and 'end_date' not in data:
                 data['dates'] = [{
                     'date': data.get('date')
@@ -46,58 +56,30 @@ class TickerSerializer(serializers.Serializer):
 
         validated_dates = []
 
-        for date_entry in data['dates']:
-            date = date_entry.get('date')
-            start_date = date_entry.get('start_date')
-            end_date = date_entry.get('end_date')
+        if not missing_fields:
+            for date_entry in data['dates']:
+                date = date_entry.get('date')
+                start_date = date_entry.get('start_date')
+                end_date = date_entry.get('end_date')
 
-            if not date and not start_date and not end_date and self.require_dates:
-                raise serializers.ValidationError("Either date or both start_date and end_date must be provided.")
+                if not date and not start_date and not end_date:
+                    if self.require_dates:
+                        raise ValidationError("Either 'date' or both 'start_date' and 'end_date' must be provided.")
 
-            if (start_date and not end_date) or (end_date and not start_date):
-                raise serializers.ValidationError("Both start_date and end_date are required if one is provided.")
+                else:
+                    if (start_date and not end_date) or (end_date and not start_date):
+                        raise ValidationError("Both 'start_date' and 'end_date' are required if one is provided.")
 
-            if not start_date and not end_date:
-                date_entry['start_date'] = date
-                date_entry['end_date'] = date
-                date_entry.pop('date', None)
+                    if not start_date and not end_date:
+                        date_entry['start_date'] = date
+                        date_entry['end_date'] = date
+                        date_entry.pop('date', None)
 
-            if date_entry['start_date'] and date_entry['end_date']:
-                date_entry['end_date'] += timedelta(days=1)
+                    if date_entry['start_date'] and date_entry['end_date']:
+                        date_entry['end_date'] += timedelta(days=1)
 
-            validated_dates.append(date_entry)
+                    validated_dates.append(date_entry)
 
         data['dates'] = validated_dates
 
         return data
-
-    def validate_ticker(self, value):
-        return f"{value}.SA"
-
-
-class ListSerializer(serializers.ListSerializer):
-    def to_internal_value(self, data):
-        if isinstance(data, list):
-            return super().to_internal_value(data)
-
-        else:
-            return super().to_internal_value([data])
-
-
-class WrapperSerializer(serializers.Serializer):
-    def __init__(self, *args, **kwargs):
-        self.require_dates = kwargs.pop('require_dates', True)
-        super().__init__(*args, **kwargs)
-
-    def to_internal_value(self, data):
-        list_serializer = ListSerializer(
-            data=data,
-            child=TickerSerializer(require_dates=self.require_dates)
-        )
-
-        return list_serializer.to_internal_value(data)
-
-    def to_representation(self, instance):
-        list_serializer = ListSerializer(instance=instance, many=True)  # type: ignore
-
-        return list_serializer.data
