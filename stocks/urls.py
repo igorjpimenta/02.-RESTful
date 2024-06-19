@@ -1,7 +1,7 @@
 from django.urls import path
-from stocks.apps.history import HistoryData
-from stocks.apps.dividends import DividendsList
-from stocks.apps.splits import SplitsList
+from stocks.views.history import HistoryData
+from stocks.views.dividends import DividendsList
+from stocks.views.splits import SplitsList
 
 
 urlpatterns = [
