@@ -1,4 +1,4 @@
-from rest_framework.serializers import Serializer, CharField, DateTimeField, ValidationError
+from rest_framework.serializers import Serializer, ListField, CharField, DateTimeField, ValidationError
 from datetime import timedelta
 
 
@@ -8,7 +8,19 @@ class DateRangeSerializer(Serializer):
     end_date = DateTimeField(required=False)
 
 
-class TickerSerializer(Serializer):
+class TickerListSerializer(Serializer):
+    ticker = ListField(
+        child=CharField(max_length=6)
+    )
+
+    def validate_ticker(self, value):
+        if not value:
+            raise ValidationError("'ticker' cannot be an empty list.")
+
+        return [f"{item}.SA" for item in value]
+
+
+class InfoSerializer(Serializer):
     ticker = CharField(max_length=6)
     dates = DateRangeSerializer(many=True, required=False)
     date = DateTimeField(required=False)

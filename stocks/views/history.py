@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from stocks.serializers import TickerSerializer
+from stocks.serializers import InfoSerializer
 import yfinance as yf
 from typing import Dict
 from datetime import datetime
@@ -14,7 +14,7 @@ class HistoryData(APIView):
         if not isinstance(data, list):
             data = [data]
 
-        serializer = TickerSerializer(data=data, many=True, require_dates=True)
+        serializer = InfoSerializer(data=data, many=True, require_dates=True)
 
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
