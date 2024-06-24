@@ -28,7 +28,7 @@ class HistoryData(APIView):
                 ticker_info = yf.Ticker(ticker)
                 dates = item.get('dates')
 
-                history_data: Dict[str, dict] = {}
+                history_data: Dict[str, dict] = response_data.get(ticker.rstrip('.SA'), {})
                 for date_entry in dates:
                     history = ticker_info.history(
                         start=date_entry.get('start_date'),
