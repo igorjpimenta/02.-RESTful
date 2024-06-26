@@ -26,25 +26,29 @@ class HistoryData(APIView):
             for item in payload:
                 ticker = item.get('ticker')
                 ticker_info = yf.Ticker(ticker)
+                splits = ticker_info.splits
                 dates = item.get('dates')
 
                 history_data: Dict[str, dict] = response_data.get(ticker.rstrip('.SA'), {})
                 for date_entry in dates:
                     history = ticker_info.history(
                         start=date_entry.get('start_date'),
-                        end=date_entry.get('end_date')
+                        end=date_entry.get('end_date'),
+                        auto_adjust=False
                     )
 
                     for date, row in history.iterrows():
+                        split_coefficient = splits[splits.index >= date].product()
+
                         if isinstance(date, datetime):
                             date = date.strftime('%Y-%m-%d')
 
                         history_data[str(date)] = {
-                            "o": row['Open'],
-                            "h": row['High'],
-                            "l": row['Low'],
-                            "c": row['Close'],
-                            "v": row['Volume'],
+                            "o": row['Open'] * split_coefficient,
+                            "h": row['High'] * split_coefficient,
+                            "l": row['Low'] * split_coefficient,
+                            "c": row['Close'] * split_coefficient,
+                            "v": row['Volume'] * split_coefficient,
                         }
 
                 response_data[ticker.rstrip('.SA')] = history_data
