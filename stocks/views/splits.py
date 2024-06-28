@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from stocks.serializers import InfoSerializer
+from stocks.stock_ticker import StockTicker
 import yfinance as yf
 from typing import Dict
 from datetime import datetime
@@ -26,11 +27,18 @@ class SplitsList(APIView):
             for item in payload:
                 ticker = item.get('ticker')
                 dates = item.get('dates')
-
-                ticker_info = yf.Ticker(ticker)
-                splits = ticker_info.splits
+                application_category = item.get('application_category')
 
                 splits_data: Dict[str, float] = {}
+                if application_category == 'stock':
+                    st = StockTicker(ticker.rstrip('.SA'))
+                    splits = st.get_splits()
+                    splits = splits.set_index('exercised_on')['ratio']
+
+                else:
+                    ticker_info = yf.Ticker(ticker)
+                    splits = ticker_info.splits
+
                 for date, value in splits.items():
                     if not dates:
                         if isinstance(date, datetime):

@@ -22,6 +22,7 @@ class TickerListSerializer(Serializer):
 
 class InfoSerializer(Serializer):
     ticker = CharField(max_length=6)
+    application_category = CharField(required=False)
     dates = DateRangeSerializer(many=True, required=False)
     date = DateTimeField(required=False)
     start_date = DateTimeField(required=False)

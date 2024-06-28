@@ -2,6 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from stocks.serializers import InfoSerializer
+from stocks.models import IssuedTickers
+from stocks.stock_ticker import StockTicker
 import yfinance as yf
 from typing import Dict
 from datetime import datetime
@@ -22,12 +24,22 @@ class HistoryData(APIView):
         else:
             payload = serializer.validated_data
             response_data: Dict[str, dict] = {}
+            issued_tickers = IssuedTickers.objects.values_list('ticker', flat=True)
 
             for item in payload:
                 ticker = item.get('ticker')
-                ticker_info = yf.Ticker(ticker)
-                splits = ticker_info.splits
+                application_category = item.get('application_category')
                 dates = item.get('dates')
+
+                ticker_info = yf.Ticker(ticker)
+
+                if application_category == 'stock':
+                    st = StockTicker(ticker.rstrip('.SA'))
+                    splits = st.get_splits()
+                    splits = splits.set_index('exercised_on')['ratio']
+
+                else:
+                    splits = ticker_info.splits
 
                 history_data: Dict[str, dict] = response_data.get(ticker.rstrip('.SA'), {})
                 for date_entry in dates:
@@ -38,7 +50,11 @@ class HistoryData(APIView):
                     )
 
                     for date, row in history.iterrows():
-                        split_coefficient = splits[splits.index >= date].product()
+                        if ticker.rstrip('.SA') not in issued_tickers:
+                            split_coefficient = splits[splits.index >= date].product()
+
+                        else:
+                            split_coefficient = 1
 
                         if isinstance(date, datetime):
                             date = date.strftime('%Y-%m-%d')
