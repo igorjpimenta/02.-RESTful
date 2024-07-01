@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from stocks.serializers import InfoSerializer
 from stocks.models import IssuedTickers
-from stocks.stock_ticker import StockTicker
+from stocks.scrappers import StockTicker
 import yfinance as yf
 from typing import Dict
 from datetime import datetime

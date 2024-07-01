@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from stocks.serializers import InfoSerializer
+from stocks.scrappers import StockTicker
 import yfinance as yf
 from typing import Dict
 from datetime import datetime
@@ -26,11 +27,18 @@ class DividendsList(APIView):
             for item in payload:
                 ticker = item.get('ticker')
                 dates = item.get('dates')
-
-                ticker_info = yf.Ticker(ticker)
-                dividends = ticker_info.dividends
+                application_category = item.get('application_category')
 
                 dividends_data: Dict[str, float] = {}
+                if application_category == 'stock':
+                    st = StockTicker(ticker.rstrip('.SA'))
+                    dividends = st.get_yield()
+                    dividends = dividends.set_index('exercised_on')['ratio']
+
+                else:
+                    ticker_info = yf.Ticker(ticker)
+                    dividends = ticker_info.dividends
+
                 for date, value in dividends.items():
                     if not dates:
                         if isinstance(date, datetime):

@@ -3,12 +3,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from stocks.serializers import InfoSerializer
 from stocks.scrappers import StockTicker
-import yfinance as yf
 from typing import Dict
 from datetime import datetime
 
 
-class SplitsList(APIView):
+class BonusesList(APIView):
     def post(self, request):
         data = request.data
 
@@ -29,22 +28,18 @@ class SplitsList(APIView):
                 dates = item.get('dates')
                 application_category = item.get('application_category')
 
-                splits_data: Dict[str, float] = {}
+                bonuses_data: Dict[str, float] = {}
                 if application_category == 'stock':
                     st = StockTicker(ticker.rstrip('.SA'))
-                    splits = st.get_splits()
-                    splits = splits.set_index('exercised_on')['ratio']
+                    bonuses = st.get_bonuses()
+                    bonuses = bonuses.set_index('exercised_on')['ratio']
 
-                else:
-                    ticker_info = yf.Ticker(ticker)
-                    splits = ticker_info.splits
-
-                for date, value in splits.items():
+                for date, value in bonuses.items():
                     if not dates:
                         if isinstance(date, datetime):
                             date_str = date.strftime('%Y-%m-%d')
 
-                        splits_data[date_str] = value
+                        bonuses_data[date_str] = value
 
                     else:
                         for date_entry in dates:
@@ -55,9 +50,9 @@ class SplitsList(APIView):
                                 if isinstance(date, datetime):
                                     date_str = date.strftime('%Y-%m-%d')
 
-                                splits_data[date_str] = value
+                                bonuses_data[date_str] = value
 
-                response_data[ticker.rstrip('.SA')] = splits_data
+                response_data[ticker.rstrip('.SA')] = bonuses_data
 
             if isinstance(data, dict):
                 response_data = list(response_data.values())[0]
