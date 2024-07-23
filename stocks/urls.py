@@ -4,6 +4,7 @@ from stocks.views.history import HistoryData
 from stocks.views.dividends import DividendsList
 from stocks.views.splits import SplitsList
 from stocks.views.options_history import OptionsHistoryData
+from stocks.views.test import Test
 
 
 urlpatterns = [
@@ -12,4 +13,5 @@ urlpatterns = [
     path('dividends-list', DividendsList.as_view(), name='dividends_list'),
     path('splits-list', SplitsList.as_view(), name='splits_list'),
     path('options/history', OptionsHistoryData.as_view(), name='options_history_data'),
+    path('test', Test.as_view(), name='test'),
 ]
